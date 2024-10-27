@@ -95,6 +95,9 @@ function App() {
       audio.play();
       audio.onended = () => {
         resolve();
+        if (conversationActive()) {
+          startListening();
+        }
       };
     });
   };
