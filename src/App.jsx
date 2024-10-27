@@ -6,7 +6,7 @@ import { SolidMarkdown } from "solid-markdown";
 import { useI18n } from 'solid-i18n';
 
 function App() {
-  const { t, locale } = useI18n();
+  const [t, { locale }] = useI18n();
   const [jokes, setJokes] = createSignal([]);
   const [newJoke, setNewJoke] = createSignal({ setup: '', punchline: '' });
   const [user, setUser] = createSignal(null);
@@ -27,7 +27,7 @@ function App() {
   onMount(checkUserSignedIn);
 
   createEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
+    const authListener = supabase.auth.onAuthStateChange((_, session) => {
       if (session?.user) {
         setUser(session.user);
         setCurrentPage('homePage');
@@ -174,7 +174,7 @@ function App() {
                 magicLink={true}
                 view="magic_link"
                 showLinks={false}
-                authView="magic_link"
+                onlyThirdPartyProviders={true}
               />
             </div>
           </div>
