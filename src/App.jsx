@@ -1,315 +1,83 @@
-import { createSignal, onMount, For, Show } from 'solid-js';
-import { createEvent, supabase } from './supabaseClient';
-import { Auth } from '@supabase/auth-ui-solid';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { SolidMarkdown } from "solid-markdown";
-import { useI18n } from 'solid-i18n';
+import { createSignal } from 'solid-js';
+import { createEvent } from './supabaseClient';
 
 function App() {
-  const [t, { locale }] = useI18n();
-  const [jokes, setJokes] = createSignal([]);
-  const [newJoke, setNewJoke] = createSignal({ setup: '', punchline: '' });
-  const [user, setUser] = createSignal(null);
-  const [currentPage, setCurrentPage] = createSignal('login');
-  const [loading, setLoading] = createSignal(false);
-  const [generatedImage, setGeneratedImage] = createSignal('');
-  const [audioUrl, setAudioUrl] = createSignal('');
-  const [markdownText, setMarkdownText] = createSignal('');
+  const [listening, setListening] = createSignal(false);
+  const [recognition, setRecognition] = createSignal(null);
+  const [responseAudio, setResponseAudio] = createSignal(null);
 
-  const [loadingGenerateJoke, setLoadingGenerateJoke] = createSignal(false);
-  const [loadingGenerateImage, setLoadingGenerateImage] = createSignal(false);
-  const [loadingTextToSpeech, setLoadingTextToSpeech] = createSignal(false);
-  const [loadingGenerateMarkdown, setLoadingGenerateMarkdown] = createSignal(false);
-
-  const checkUserSignedIn = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setUser(user);
-      setCurrentPage('homePage');
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window)) {
+      alert('متصفحك لا يدعم التعرف على الكلام');
+      return;
     }
-  };
 
-  onMount(() => {
-    checkUserSignedIn();
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recog = new SpeechRecognition();
+    recog.lang = 'ar-SA';
+    recog.continuous = false;
+    recog.interimResults = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      if (session?.user) {
-        setUser(session.user);
-        setCurrentPage('homePage');
-      } else {
-        setUser(null);
-        setCurrentPage('login');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
+    recog.onstart = () => {
+      setListening(true);
     };
-  });
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setCurrentPage('login');
+    recog.onresult = async (event) => {
+      const transcript = event.results[0][0].transcript;
+      setListening(false);
+      await getAIResponse(transcript);
+    };
+
+    recog.onerror = (event) => {
+      console.error('Speech recognition error', event);
+      setListening(false);
+    };
+
+    recog.onend = () => {
+      setListening(false);
+    };
+
+    setRecognition(recog);
+    recog.start();
   };
 
-  const fetchJokes = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const response = await fetch('/api/getJokes', {
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`
-      }
-    });
-    if (response.ok) {
-      const data = await response.json();
-      setJokes(data);
-    } else {
-      console.error('Error fetching jokes:', response.statusText);
-    }
-  };
-
-  const saveJoke = async (e) => {
-    e.preventDefault();
-    const { data: { session } } = await supabase.auth.getSession();
+  const getAIResponse = async (text) => {
     try {
-      const response = await fetch('/api/saveJoke', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newJoke()),
-      });
-      if (response.ok) {
-        const savedJoke = await response.json();
-        setJokes([...jokes(), savedJoke]);
-        setNewJoke({ setup: '', punchline: '' });
-      } else {
-        console.error('Error saving joke');
-      }
-    } catch (error) {
-      console.error('Error saving joke:', error);
-    }
-  };
-
-  onMount(() => {
-    if (user()) fetchJokes();
-  });
-
-  const handleGenerateJoke = async () => {
-    setLoadingGenerateJoke(true);
-    try {
-      const result = await createEvent('chatgpt_request', {
-        prompt: 'أعطني نكتة باللغة العربية بصيغة JSON بالهيكل التالي: { "setup": "بداية النكتة", "punchline": "نهاية النكتة" }',
-        response_type: 'json'
-      });
-      setNewJoke(result);
-    } catch (error) {
-      console.error('Error creating event:', error);
-    } finally {
-      setLoadingGenerateJoke(false);
-    }
-  };
-
-  const handleGenerateImage = async () => {
-    setLoadingGenerateImage(true);
-    try {
-      const result = await createEvent('generate_image', {
-        prompt: 'شخصية كرتونية مضحكة تروي نكتة'
-      });
-      setGeneratedImage(result);
-    } catch (error) {
-      console.error('Error generating image:', error);
-    } finally {
-      setLoadingGenerateImage(false);
-    }
-  };
-
-  const handleTextToSpeech = async () => {
-    setLoadingTextToSpeech(true);
-    try {
-      const result = await createEvent('text_to_speech', {
-        text: `${newJoke().setup} ... ${newJoke().punchline}`
-      });
-      setAudioUrl(result);
-    } catch (error) {
-      console.error('Error converting text to speech:', error);
-    } finally {
-      setLoadingTextToSpeech(false);
-    }
-  };
-
-  const handleMarkdownGeneration = async () => {
-    setLoadingGenerateMarkdown(true);
-    try {
-      const result = await createEvent('chatgpt_request', {
-        prompt: 'اكتب قصة قصيرة ومضحكة حول فكاهي بتنسيق Markdown',
+      const aiResponse = await createEvent('chatgpt_request', {
+        prompt: text,
         response_type: 'text'
       });
-      setMarkdownText(result);
+
+      const audioUrl = await createEvent('text_to_speech', {
+        text: aiResponse
+      });
+
+      setResponseAudio(audioUrl);
+      playAudio(audioUrl);
     } catch (error) {
-      console.error('Error generating markdown:', error);
-    } finally {
-      setLoadingGenerateMarkdown(false);
+      console.error('Error getting AI response:', error);
     }
   };
 
-  const isArabic = () => locale() === 'ar';
+  const playAudio = (url) => {
+    const audio = new Audio(url);
+    audio.play();
+  };
 
   return (
-    <div class="min-h-screen bg-gradient-to-br from-purple-100 to-blue-100 p-4 text-gray-800" dir={isArabic() ? 'rtl' : 'ltr'}>
-      <Show
-        when={currentPage() === 'homePage'}
-        fallback={
-          <div class="flex items-center justify-center min-h-screen">
-            <div class="w-full max-w-md p-8 bg-white rounded-xl shadow-lg">
-              <h2 class="text-3xl font-bold mb-6 text-center text-purple-600">{t('signInWithZapt')}</h2>
-              <a
-                href="https://www.zapt.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-blue-500 hover:underline mb-6 block text-center"
-              >
-                {t('learnMore')}
-              </a>
-              <Auth
-                supabaseClient={supabase}
-                appearance={{ theme: ThemeSupa }}
-                providers={['google', 'facebook', 'apple']}
-                magicLink={true}
-                view="magic_link"
-                showLinks={false}
-                onlyThirdPartyProviders={true}
-              />
-            </div>
-          </div>
-        }
-      >
-        <div class="max-w-6xl mx-auto h-full">
-          <div class="flex justify-between items-center mb-8">
-            <h1 class="text-4xl font-bold text-purple-600">{t('jokeCentral')}</h1>
-            <button
-              class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-full shadow-md focus:outline-none focus:ring-2 focus:ring-red-400 transition duration-300 ease-in-out transform hover:scale-105 cursor-pointer"
-              onClick={handleSignOut}
-            >
-              {t('signOut')}
-            </button>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 h-full">
-            <div class="col-span-1 md:col-span-2 lg:col-span-1">
-              <h2 class="text-2xl font-bold mb-4 text-purple-600">{t('addNewJoke')}</h2>
-              <form onSubmit={saveJoke} class="space-y-4">
-                <input
-                  type="text"
-                  placeholder={t('setupPlaceholder')}
-                  value={newJoke().setup}
-                  onInput={(e) => setNewJoke({ ...newJoke(), setup: e.target.value })}
-                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-transparent box-border"
-                  required
-                  aria-label={t('setupPlaceholder')}
-                />
-                <input
-                  type="text"
-                  placeholder={t('punchlinePlaceholder')}
-                  value={newJoke().punchline}
-                  onInput={(e) => setNewJoke({ ...newJoke(), punchline: e.target.value })}
-                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-transparent box-border"
-                  required
-                  aria-label={t('punchlinePlaceholder')}
-                />
-                <div class="flex space-x-4">
-                  <button
-                    type="submit"
-                    class="flex-1 px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition duration-300 ease-in-out transform hover:scale-105 cursor-pointer"
-                    disabled={loading()}
-                  >
-                    {t('saveJoke')}
-                  </button>
-                  <button
-                    type="button"
-                    class={`flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300 ease-in-out transform hover:scale-105 ${loadingGenerateJoke() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                    onClick={handleGenerateJoke}
-                    disabled={loadingGenerateJoke()}
-                  >
-                    <Show when={loadingGenerateJoke()}>{t('generating')}</Show>
-                    <Show when={!loadingGenerateJoke()}>{t('generateJoke')}</Show>
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            <div class="col-span-1 md:col-span-2 lg:col-span-1">
-              <h2 class="text-2xl font-bold mb-4 text-purple-600">{t('jokeList')}</h2>
-              <div class="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto pr-4">
-                <For each={jokes()}>
-                  {(joke) => (
-                    <div class="bg-white p-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
-                      <p class="font-semibold text-lg text-purple-600 mb-2">{joke.setup}</p>
-                      <p class="text-gray-700">{joke.punchline}</p>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </div>
-
-            <div class="col-span-1 md:col-span-2 lg:col-span-1">
-              <h2 class="text-2xl font-bold mb-4 text-purple-600">{t('additionalFeatures')}</h2>
-              <div class="space-y-4">
-                <button
-                  onClick={handleGenerateImage}
-                  class={`w-full px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-300 ease-in-out transform hover:scale-105 ${loadingGenerateImage() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  disabled={loadingGenerateImage()}
-                >
-                  <Show when={loadingGenerateImage()}>{t('generating')}</Show>
-                  <Show when={!loadingGenerateImage()}>{t('generateImage')}</Show>
-                </button>
-                <Show when={newJoke().setup && newJoke().punchline}>
-                  <button
-                    onClick={handleTextToSpeech}
-                    class={`w-full px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:scale-105 ${loadingTextToSpeech() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                    disabled={loadingTextToSpeech()}
-                  >
-                    <Show when={loadingTextToSpeech()}>{t('generating')}</Show>
-                    <Show when={!loadingTextToSpeech()}>{t('textToSpeech')}</Show>
-                  </button>
-                </Show>
-                <button
-                  onClick={handleMarkdownGeneration}
-                  class={`w-full px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition duration-300 ease-in-out transform hover:scale-105 ${loadingGenerateMarkdown() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  disabled={loadingGenerateMarkdown()}
-                >
-                  <Show when={loadingGenerateMarkdown()}>{t('generating')}</Show>
-                  <Show when={!loadingGenerateMarkdown()}>{t('generateMarkdown')}</Show>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Show when={generatedImage()}>
-              <div>
-                <h3 class="text-xl font-bold mb-2 text-purple-600">{t('generatedImage')}</h3>
-                <img src={generatedImage()} alt={t('generatedImage')} class="w-full rounded-lg shadow-md" />
-              </div>
-            </Show>
-            <Show when={audioUrl()}>
-              <div>
-                <h3 class="text-xl font-bold mb-2 text-purple-600">{t('audioJoke')}</h3>
-                <audio controls src={audioUrl()} class="w-full" aria-label={t('audioJoke')} />
-              </div>
-            </Show>
-            <Show when={markdownText()}>
-              <div>
-                <h3 class="text-xl font-bold mb-2 text-purple-600">{t('markdownStory')}</h3>
-                <div class="bg-white p-4 rounded-lg shadow-md">
-                  <SolidMarkdown children={markdownText()} />
-                </div>
-              </div>
-            </Show>
-          </div>
-        </div>
-      </Show>
+    <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4 text-gray-800" dir="rtl">
+      <div class="max-w-md w-full text-center">
+        <h1 class="text-3xl font-bold mb-6">محادثة صوتية مع الذكاء الاصطناعي</h1>
+        <button
+          class={`w-48 h-48 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-xl flex items-center justify-center mx-auto mb-4 transition duration-300 ease-in-out transform ${listening() ? 'scale-90' : 'hover:scale-105'} cursor-pointer`}
+          onClick={startListening}
+          disabled={listening()}
+          aria-label="اضغط للتحدث"
+        >
+          {listening() ? 'استمع...' : 'اضغط للتحدث'}
+        </button>
+        <p class="text-gray-600">{listening() ? 'يرجى التحدث، نحن نستمع...' : 'اضغط على الدائرة أعلاه لبدء التحدث'}</p>
+      </div>
     </div>
   );
 }

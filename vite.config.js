@@ -7,10 +7,7 @@ export default defineConfig({
     target: 'esnext',
     polyfillDynamicImport: false,
   },
-  resolve: {
-    conditions: ['development', 'browser'],
+  server: {
+    port: 3000,
   },
-  optimizeDeps: {
-    exclude: ['drizzle-orm', '@neondatabase/serverless']
-  }
 });
