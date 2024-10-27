@@ -16,6 +16,11 @@ function App() {
   const [audioUrl, setAudioUrl] = createSignal('');
   const [markdownText, setMarkdownText] = createSignal('');
 
+  const [loadingGenerateJoke, setLoadingGenerateJoke] = createSignal(false);
+  const [loadingGenerateImage, setLoadingGenerateImage] = createSignal(false);
+  const [loadingTextToSpeech, setLoadingTextToSpeech] = createSignal(false);
+  const [loadingGenerateMarkdown, setLoadingGenerateMarkdown] = createSignal(false);
+
   const checkUserSignedIn = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -76,7 +81,8 @@ function App() {
         body: JSON.stringify(newJoke()),
       });
       if (response.ok) {
-        setJokes([...jokes(), newJoke()]);
+        const savedJoke = await response.json();
+        setJokes([...jokes(), savedJoke]);
         setNewJoke({ setup: '', punchline: '' });
       } else {
         console.error('Error saving joke');
@@ -91,7 +97,7 @@ function App() {
   });
 
   const handleGenerateJoke = async () => {
-    setLoading(true);
+    setLoadingGenerateJoke(true);
     try {
       const result = await createEvent('chatgpt_request', {
         prompt: 'أعطني نكتة باللغة العربية بصيغة JSON بالهيكل التالي: { "setup": "بداية النكتة", "punchline": "نهاية النكتة" }',
@@ -101,12 +107,12 @@ function App() {
     } catch (error) {
       console.error('Error creating event:', error);
     } finally {
-      setLoading(false);
+      setLoadingGenerateJoke(false);
     }
   };
 
   const handleGenerateImage = async () => {
-    setLoading(true);
+    setLoadingGenerateImage(true);
     try {
       const result = await createEvent('generate_image', {
         prompt: 'شخصية كرتونية مضحكة تروي نكتة'
@@ -115,12 +121,12 @@ function App() {
     } catch (error) {
       console.error('Error generating image:', error);
     } finally {
-      setLoading(false);
+      setLoadingGenerateImage(false);
     }
   };
 
   const handleTextToSpeech = async () => {
-    setLoading(true);
+    setLoadingTextToSpeech(true);
     try {
       const result = await createEvent('text_to_speech', {
         text: `${newJoke().setup} ... ${newJoke().punchline}`
@@ -129,12 +135,12 @@ function App() {
     } catch (error) {
       console.error('Error converting text to speech:', error);
     } finally {
-      setLoading(false);
+      setLoadingTextToSpeech(false);
     }
   };
 
   const handleMarkdownGeneration = async () => {
-    setLoading(true);
+    setLoadingGenerateMarkdown(true);
     try {
       const result = await createEvent('chatgpt_request', {
         prompt: 'اكتب قصة قصيرة ومضحكة حول فكاهي بتنسيق Markdown',
@@ -144,7 +150,7 @@ function App() {
     } catch (error) {
       console.error('Error generating markdown:', error);
     } finally {
-      setLoading(false);
+      setLoadingGenerateMarkdown(false);
     }
   };
 
@@ -222,12 +228,12 @@ function App() {
                   </button>
                   <button
                     type="button"
-                    class={`flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300 ease-in-out transform hover:scale-105 ${loading() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    class={`flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300 ease-in-out transform hover:scale-105 ${loadingGenerateJoke() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                     onClick={handleGenerateJoke}
-                    disabled={loading()}
+                    disabled={loadingGenerateJoke()}
                   >
-                    <Show when={loading()}>{t('generating')}</Show>
-                    <Show when={!loading()}>{t('generateJoke')}</Show>
+                    <Show when={loadingGenerateJoke()}>{t('generating')}</Show>
+                    <Show when={!loadingGenerateJoke()}>{t('generateJoke')}</Show>
                   </button>
                 </div>
               </form>
@@ -252,26 +258,29 @@ function App() {
               <div class="space-y-4">
                 <button
                   onClick={handleGenerateImage}
-                  class="w-full px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-300 ease-in-out transform hover:scale-105 cursor-pointer"
-                  disabled={loading()}
+                  class={`w-full px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-300 ease-in-out transform hover:scale-105 ${loadingGenerateImage() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  disabled={loadingGenerateImage()}
                 >
-                  {t('generateImage')}
+                  <Show when={loadingGenerateImage()}>{t('generating')}</Show>
+                  <Show when={!loadingGenerateImage()}>{t('generateImage')}</Show>
                 </button>
                 <Show when={newJoke().setup && newJoke().punchline}>
                   <button
                     onClick={handleTextToSpeech}
-                    class="w-full px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:scale-105 cursor-pointer"
-                    disabled={loading()}
+                    class={`w-full px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:scale-105 ${loadingTextToSpeech() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    disabled={loadingTextToSpeech()}
                   >
-                    {t('textToSpeech')}
+                    <Show when={loadingTextToSpeech()}>{t('generating')}</Show>
+                    <Show when={!loadingTextToSpeech()}>{t('textToSpeech')}</Show>
                   </button>
                 </Show>
                 <button
                   onClick={handleMarkdownGeneration}
-                  class="w-full px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition duration-300 ease-in-out transform hover:scale-105 cursor-pointer"
-                  disabled={loading()}
+                  class={`w-full px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition duration-300 ease-in-out transform hover:scale-105 ${loadingGenerateMarkdown() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  disabled={loadingGenerateMarkdown()}
                 >
-                  {t('generateMarkdown')}
+                  <Show when={loadingGenerateMarkdown()}>{t('generating')}</Show>
+                  <Show when={!loadingGenerateMarkdown()}>{t('generateMarkdown')}</Show>
                 </button>
               </div>
             </div>

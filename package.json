@@ -16,9 +16,7 @@
     "@supabase/auth-ui-solid": "^0.3.8",
     "@zapt/zapt-js": "^1.0.5",
     "solid-markdown": "^2.0.13",
-    "solid-i18n": "^1.1.0",
-    "drizzle-orm/neon-http": "^0.33.0",
-    "drizzle-orm/pg-core": "^0.33.0"
+    "solid-i18n": "^1.1.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",
