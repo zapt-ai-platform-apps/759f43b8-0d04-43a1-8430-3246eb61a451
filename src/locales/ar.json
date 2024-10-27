@@ -1,0 +1,21 @@
+{
+  "signInWithZapt": "تسجيل الدخول باستخدام ZAPT",
+  "learnMore": "تعرف على المزيد حول ZAPT",
+  "jokeCentral": "مركز النكات",
+  "signOut": "تسجيل الخروج",
+  "addNewJoke": "إضافة نكتة جديدة",
+  "setupPlaceholder": "البداية",
+  "punchlinePlaceholder": "النهاية",
+  "saveJoke": "احفظ النكتة",
+  "generateJoke": "توليد نكتة",
+  "jokeList": "قائمة النكات",
+  "additionalFeatures": "ميزات إضافية",
+  "generateImage": "توليد صورة",
+  "textToSpeech": "تحويل النص إلى كلام",
+  "generateMarkdown": "توليد Markdown",
+  "generatedImage": "الصورة المولدة",
+  "audioJoke": "نكتة صوتية",
+  "markdownStory": "قصة Markdown",
+  "loading": "جاري التحميل...",
+  "generating": "جاري التوليد..."
+}

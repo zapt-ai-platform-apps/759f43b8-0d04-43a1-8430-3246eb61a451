@@ -1,0 +1,21 @@
+{
+  "signInWithZapt": "Sign in with ZAPT",
+  "learnMore": "Learn more about ZAPT",
+  "jokeCentral": "Joke Central",
+  "signOut": "Sign Out",
+  "addNewJoke": "Add New Joke",
+  "setupPlaceholder": "Setup",
+  "punchlinePlaceholder": "Punchline",
+  "saveJoke": "Save Joke",
+  "generateJoke": "Generate Joke",
+  "jokeList": "Joke List",
+  "additionalFeatures": "Additional Features",
+  "generateImage": "Generate Image",
+  "textToSpeech": "Text to Speech",
+  "generateMarkdown": "Generate Markdown",
+  "generatedImage": "Generated Image",
+  "audioJoke": "Audio Joke",
+  "markdownStory": "Markdown Story",
+  "loading": "Loading...",
+  "generating": "Generating..."
+}
