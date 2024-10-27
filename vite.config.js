@@ -7,6 +7,9 @@ export default defineConfig({
     target: 'esnext',
     polyfillDynamicImport: false,
   },
+  resolve: {
+    conditions: ['development', 'browser'],
+  },
   server: {
     port: 3000,
   },

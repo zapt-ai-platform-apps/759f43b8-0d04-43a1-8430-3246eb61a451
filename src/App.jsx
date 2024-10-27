@@ -1,10 +1,11 @@
-import { createSignal } from 'solid-js';
+import { createSignal, onMount } from 'solid-js';
 import { createEvent } from './supabaseClient';
 
 function App() {
   const [listening, setListening] = createSignal(false);
   const [recognition, setRecognition] = createSignal(null);
   const [responseAudio, setResponseAudio] = createSignal(null);
+  const [loading, setLoading] = createSignal(false);
 
   const startListening = () => {
     if (!('webkitSpeechRecognition' in window)) {
@@ -42,9 +43,10 @@ function App() {
   };
 
   const getAIResponse = async (text) => {
+    setLoading(true);
     try {
       const aiResponse = await createEvent('chatgpt_request', {
-        prompt: text,
+        prompt: `من فضلك، قدم إجابة احترافية ومتوافقة على السؤال التالي: "${text}"`,
         response_type: 'text'
       });
 
@@ -56,6 +58,8 @@ function App() {
       playAudio(audioUrl);
     } catch (error) {
       console.error('Error getting AI response:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,16 +71,24 @@ function App() {
   return (
     <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4 text-gray-800" dir="rtl">
       <div class="max-w-md w-full text-center">
-        <h1 class="text-3xl font-bold mb-6">محادثة صوتية مع الذكاء الاصطناعي</h1>
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">محادثة صوتية مع الذكاء الاصطناعي</h1>
         <button
-          class={`w-48 h-48 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-xl flex items-center justify-center mx-auto mb-4 transition duration-300 ease-in-out transform ${listening() ? 'scale-90' : 'hover:scale-105'} cursor-pointer`}
+          class={`w-48 h-48 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-xl flex items-center justify-center mx-auto mb-4 transition duration-300 ease-in-out transform ${
+            listening() || loading() ? 'scale-90 cursor-not-allowed opacity-50' : 'hover:scale-105 cursor-pointer'
+          }`}
           onClick={startListening}
-          disabled={listening()}
+          disabled={listening() || loading()}
           aria-label="اضغط للتحدث"
         >
-          {listening() ? 'استمع...' : 'اضغط للتحدث'}
+          {listening() ? 'استمع...' : loading() ? 'جاري المعالجة...' : 'اضغط للتحدث'}
         </button>
-        <p class="text-gray-600">{listening() ? 'يرجى التحدث، نحن نستمع...' : 'اضغط على الدائرة أعلاه لبدء التحدث'}</p>
+        <p class="text-gray-600">
+          {listening()
+            ? 'يرجى التحدث، نحن نستمع...'
+            : loading()
+            ? 'جاري الحصول على الاستجابة...'
+            : 'اضغط على الدائرة أعلاه لبدء التحدث'}
+        </p>
       </div>
     </div>
   );
