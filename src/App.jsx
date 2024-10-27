@@ -1,45 +1,43 @@
-import { createSignal, onMount } from 'solid-js';
+import { createSignal } from 'solid-js';
 import { createEvent } from './supabaseClient';
 
 function App() {
   const [listening, setListening] = createSignal(false);
-  const [recognition, setRecognition] = createSignal(null);
-  const [responseAudio, setResponseAudio] = createSignal(null);
   const [loading, setLoading] = createSignal(false);
 
   const startListening = () => {
+    if (listening()) return; // Prevent multiple instances
     if (!('webkitSpeechRecognition' in window)) {
       alert('متصفحك لا يدعم التعرف على الكلام');
       return;
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recog = new SpeechRecognition();
-    recog.lang = 'ar-SA';
-    recog.continuous = false;
-    recog.interimResults = false;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-SA';
+    recognition.continuous = false;
+    recognition.interimResults = false;
 
-    recog.onstart = () => {
+    recognition.onstart = () => {
       setListening(true);
     };
 
-    recog.onresult = async (event) => {
+    recognition.onresult = async (event) => {
       const transcript = event.results[0][0].transcript;
       setListening(false);
       await getAIResponse(transcript);
     };
 
-    recog.onerror = (event) => {
+    recognition.onerror = (event) => {
       console.error('Speech recognition error', event);
       setListening(false);
     };
 
-    recog.onend = () => {
+    recognition.onend = () => {
       setListening(false);
     };
 
-    setRecognition(recog);
-    recog.start();
+    recognition.start();
   };
 
   const getAIResponse = async (text) => {
@@ -47,14 +45,13 @@ function App() {
     try {
       const aiResponse = await createEvent('chatgpt_request', {
         prompt: `من فضلك، قدم إجابة احترافية ومتوافقة على السؤال التالي: "${text}"`,
-        response_type: 'text'
+        response_type: 'text',
       });
 
       const audioUrl = await createEvent('text_to_speech', {
-        text: aiResponse
+        text: aiResponse,
       });
 
-      setResponseAudio(audioUrl);
       playAudio(audioUrl);
     } catch (error) {
       console.error('Error getting AI response:', error);
@@ -66,6 +63,10 @@ function App() {
   const playAudio = (url) => {
     const audio = new Audio(url);
     audio.play();
+    audio.onended = () => {
+      // Start listening again after the audio ends
+      startListening();
+    };
   };
 
   return (
