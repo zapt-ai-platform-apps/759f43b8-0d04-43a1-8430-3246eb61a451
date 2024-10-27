@@ -1,4 +1,4 @@
-import { createSignal, onMount, createEffect, For, Show } from 'solid-js';
+import { createSignal, onMount, For, Show } from 'solid-js';
 import { createEvent, supabase } from './supabaseClient';
 import { Auth } from '@supabase/auth-ui-solid';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
@@ -24,10 +24,10 @@ function App() {
     }
   };
 
-  onMount(checkUserSignedIn);
+  onMount(() => {
+    checkUserSignedIn();
 
-  createEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (session?.user) {
         setUser(session.user);
         setCurrentPage('homePage');
@@ -38,7 +38,7 @@ function App() {
     });
 
     return () => {
-      authListener?.unsubscribe();
+      subscription.unsubscribe();
     };
   });
 
@@ -86,9 +86,8 @@ function App() {
     }
   };
 
-  createEffect(() => {
-    if (!user()) return;
-    fetchJokes();
+  onMount(() => {
+    if (user()) fetchJokes();
   });
 
   const handleGenerateJoke = async () => {
