@@ -151,7 +151,7 @@ function App() {
   const isArabic = () => locale() === 'ar';
 
   return (
-    <div class="min-h-screen bg-gradient-to-br from-purple-100 to-blue-100 p-4" dir={isArabic() ? 'rtl' : 'ltr'}>
+    <div class="min-h-screen bg-gradient-to-br from-purple-100 to-blue-100 p-4 text-gray-800" dir={isArabic() ? 'rtl' : 'ltr'}>
       <Show
         when={currentPage() === 'homePage'}
         fallback={
@@ -179,7 +179,7 @@ function App() {
           </div>
         }
       >
-        <div class="max-w-6xl mx-auto">
+        <div class="max-w-6xl mx-auto h-full">
           <div class="flex justify-between items-center mb-8">
             <h1 class="text-4xl font-bold text-purple-600">{t('jokeCentral')}</h1>
             <button
@@ -190,7 +190,7 @@ function App() {
             </button>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 h-full">
             <div class="col-span-1 md:col-span-2 lg:col-span-1">
               <h2 class="text-2xl font-bold mb-4 text-purple-600">{t('addNewJoke')}</h2>
               <form onSubmit={saveJoke} class="space-y-4">
