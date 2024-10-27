@@ -27,7 +27,7 @@ function App() {
   onMount(checkUserSignedIn);
 
   createEffect(() => {
-    const authListener = supabase.auth.onAuthStateChange((_, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
       if (session?.user) {
         setUser(session.user);
         setCurrentPage('homePage');
@@ -38,7 +38,7 @@ function App() {
     });
 
     return () => {
-      authListener.unsubscribe();
+      authListener?.unsubscribe();
     };
   });
 
@@ -152,7 +152,7 @@ function App() {
   const isArabic = () => locale() === 'ar';
 
   return (
-    <div class={`min-h-screen bg-gradient-to-br from-purple-100 to-blue-100 p-4 ${isArabic() ? 'rtl' : 'ltr'}`} dir={isArabic() ? 'rtl' : 'ltr'}>
+    <div class="min-h-screen bg-gradient-to-br from-purple-100 to-blue-100 p-4" dir={isArabic() ? 'rtl' : 'ltr'}>
       <Show
         when={currentPage() === 'homePage'}
         fallback={
