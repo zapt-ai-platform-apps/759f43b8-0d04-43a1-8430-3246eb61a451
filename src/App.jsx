@@ -1,19 +1,19 @@
-import { createSignal } from 'solid-js';
+import { createSignal, onMount } from 'solid-js';
 import { createEvent } from './supabaseClient';
 
 function App() {
   const [listening, setListening] = createSignal(false);
   const [loading, setLoading] = createSignal(false);
+  const [conversationActive, setConversationActive] = createSignal(false);
+  let recognition;
 
-  const startListening = () => {
-    if (listening()) return; // Prevent multiple instances
+  const initRecognition = () => {
     if (!('webkitSpeechRecognition' in window)) {
       alert('متصفحك لا يدعم التعرف على الكلام');
       return;
     }
-
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+    recognition = new SpeechRecognition();
     recognition.lang = 'ar-SA';
     recognition.continuous = false;
     recognition.interimResults = false;
@@ -31,13 +31,42 @@ function App() {
     recognition.onerror = (event) => {
       console.error('Speech recognition error', event);
       setListening(false);
+      if (conversationActive()) {
+        startListening();
+      }
     };
 
     recognition.onend = () => {
       setListening(false);
+      if (conversationActive()) {
+        startListening();
+      }
     };
+  };
 
+  onMount(() => {
+    initRecognition();
+  });
+
+  const startListening = () => {
+    if (listening() || !conversationActive()) return;
     recognition.start();
+  };
+
+  const stopListening = () => {
+    if (listening()) {
+      recognition.stop();
+    }
+    setConversationActive(false);
+  };
+
+  const toggleConversation = () => {
+    if (conversationActive()) {
+      stopListening();
+    } else {
+      setConversationActive(true);
+      startListening();
+    }
   };
 
   const getAIResponse = async (text) => {
@@ -52,7 +81,7 @@ function App() {
         text: aiResponse,
       });
 
-      playAudio(audioUrl);
+      await playAudio(audioUrl);
     } catch (error) {
       console.error('Error getting AI response:', error);
     } finally {
@@ -61,12 +90,13 @@ function App() {
   };
 
   const playAudio = (url) => {
-    const audio = new Audio(url);
-    audio.play();
-    audio.onended = () => {
-      // Start listening again after the audio ends
-      startListening();
-    };
+    return new Promise((resolve) => {
+      const audio = new Audio(url);
+      audio.play();
+      audio.onended = () => {
+        resolve();
+      };
+    });
   };
 
   return (
@@ -75,20 +105,22 @@ function App() {
         <h1 class="text-3xl font-bold mb-6 text-gray-800">محادثة صوتية مع الذكاء الاصطناعي</h1>
         <button
           class={`w-48 h-48 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-xl flex items-center justify-center mx-auto mb-4 transition duration-300 ease-in-out transform ${
-            listening() || loading() ? 'scale-90 cursor-not-allowed opacity-50' : 'hover:scale-105 cursor-pointer'
+            loading() ? 'scale-90 cursor-not-allowed opacity-50' : 'hover:scale-105 cursor-pointer'
           }`}
-          onClick={startListening}
-          disabled={listening() || loading()}
-          aria-label="اضغط للتحدث"
+          onClick={toggleConversation}
+          disabled={loading()}
+          aria-label="بدء وإيقاف المحادثة"
         >
-          {listening() ? 'استمع...' : loading() ? 'جاري المعالجة...' : 'اضغط للتحدث'}
+          {conversationActive() ? 'إيقاف المحادثة' : 'بدء المحادثة'}
         </button>
         <p class="text-gray-600">
           {listening()
             ? 'يرجى التحدث، نحن نستمع...'
             : loading()
             ? 'جاري الحصول على الاستجابة...'
-            : 'اضغط على الدائرة أعلاه لبدء التحدث'}
+            : conversationActive()
+            ? 'المحادثة نشطة. اضغط على الزر لإيقافها.'
+            : 'اضغط على الدائرة أعلاه لبدء المحادثة'}
         </p>
       </div>
     </div>
